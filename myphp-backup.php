@@ -2,7 +2,7 @@
 /**
  * This file contains the Backup_Database class wich performs
  * a partial or complete backup of any given MySQL database
- * @author Daniel López Azaña <-->
+ * @author Daniel López Azaña <daniloaz@gmail.com>
  * @version 1.0
  */
 
@@ -17,7 +17,8 @@ define("DB_PASSWORD", 'your_password');
 define("DB_NAME", 'your_db_name');
 define("DB_HOST", 'localhost');
 define("OUTPUT_DIR", 'myphp-backup');
-define("TABLES", '*');
+define("TABLES", '*'); // Full backup
+//define("TABLES", 'table1 table2 table3'); // Partial backup
 define("CHARSET", 'utf8');
 
 /**
@@ -25,7 +26,7 @@ define("CHARSET", 'utf8');
  */
 $backupDatabase = new Backup_Database(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
 $status = $backupDatabase->backupTables(TABLES, OUTPUT_DIR) ? 'OK' : 'KO';
-echo "Backup result: ".$status;
+echo "<br />Backup result: ".$status."<br />";
 
 /**
  * The Backup_Database class
@@ -159,8 +160,7 @@ class Backup_Database {
 
                 $sql.="\n\n\n";
 
-                echo " OK" . "
-";
+                echo " OK <br />";
             }
         }
         catch (Exception $e)
