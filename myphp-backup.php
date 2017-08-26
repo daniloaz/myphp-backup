@@ -182,6 +182,9 @@ class Backup_Database {
 
         try
         {
+            if (!file_exists($outputDir)) {
+                mkdir($outputDir, 0777, true);
+            }
             $handle = fopen($outputDir.'/myphp-backup-'.$this->dbName.'-'.date("Ymd-His", time()).'.sql','w+');
             fwrite($handle, $sql);
             fclose($handle);
