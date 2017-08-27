@@ -78,14 +78,13 @@ class Backup_Database {
     protected function initializeDatabase()
     {
         try {
-            if($conn = mysqli_connect($this->host, $this->username, $this->passwd)) {
-                mysqli_select_db($conn, $this->dbName);
-                if (!mysqli_set_charset ($conn, $this->charset))
-                {
-                    mysqli_query($conn, 'SET NAMES '.$this->charset);
-                }
-            } else {
-                throw new Exception('ERROR connecting database. Check your authentication credentials.');
+            $conn = mysqli_connect($this->host, $this->username, $this->passwd, $this->dbName);
+            if (mysqli_connect_errno()) {
+                throw new Exception('ERROR connecting database: ' . mysqli_connect_error());
+                die();
+            }
+            if (!mysqli_set_charset($conn, $this->charset)) {
+                mysqli_query($conn, 'SET NAMES '.$this->charset);
             }
         } catch (Exception $e) {
             print_r($e->getMessage());
