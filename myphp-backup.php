@@ -16,7 +16,7 @@ define("DB_USER", 'your_username');
 define("DB_PASSWORD", 'your_password');
 define("DB_NAME", 'your_db_name');
 define("DB_HOST", 'localhost');
-define("OUTPUT_DIR", 'myphp-backup');
+define("BACKUP_DIR", 'myphp-backup');
 define("TABLES", '*'); // Full backup
 //define("TABLES", 'table1 table2 table3'); // Partial backup
 define("CHARSET", 'utf8');
@@ -25,7 +25,7 @@ define("CHARSET", 'utf8');
  * Instantiate Backup_Database and perform backup
  */
 $backupDatabase = new Backup_Database(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
-$status = $backupDatabase->backupTables(TABLES, OUTPUT_DIR) ? 'OK' : 'KO';
+$status = $backupDatabase->backupTables(TABLES, BACKUP_DIR) ? 'OK' : 'KO';
 echo "<br />Backup result: ".$status."<br />";
 
 /**
@@ -99,7 +99,7 @@ class Backup_Database {
      * Use '*' for whole database or 'table1 table2 table3...'
      * @param string $tables
      */
-    public function backupTables($tables = '*', $outputDir = '.')
+    public function backupTables($tables = '*', $backupDir = '.')
     {
         try
         {
@@ -176,23 +176,23 @@ class Backup_Database {
             return false;
         }
 
-        return $this->saveFile($sql, $outputDir);
+        return $this->saveFile($sql, $backupDir);
     }
 
     /**
      * Save SQL to file
      * @param string $sql
      */
-    protected function saveFile(&$sql, $outputDir = '.')
+    protected function saveFile(&$sql, $backupDir = '.')
     {
         if (!$sql) return false;
 
         try
         {
-            if (!file_exists($outputDir)) {
-                mkdir($outputDir, 0777, true);
+            if (!file_exists($backupDir)) {
+                mkdir($backupDir, 0777, true);
             }
-            $handle = fopen($outputDir.'/myphp-backup-'.$this->dbName.'-'.date("Ymd-His", time()).'.sql','w+');
+            $handle = fopen($backupDir.'/myphp-backup-'.$this->dbName.'-'.date("Ymd-His", time()).'.sql','w+');
             fwrite($handle, $sql);
             fclose($handle);
         }
