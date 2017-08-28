@@ -17,7 +17,7 @@ define("BACKUP_DIR", 'myphp-backup-files'); // Comment this line to use same scr
 define("TABLES", '*'); // Full backup
 //define("TABLES", 'table1 table2 table3'); // Partial backup
 define("CHARSET", 'utf8');
-define("GZIP_BACKUP_FILE", true);
+define("GZIP_BACKUP_FILE", true);  // Set to false if you want plain SQL backup files (not gzipped)
 
 /**
  * The Backup_Database class

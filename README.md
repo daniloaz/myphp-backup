@@ -28,10 +28,11 @@ Don't forget to set your database access credentials before performing any backu
 	define("TABLES", '*'); // Full backup
 	//define("TABLES", 'table1 table2 table3'); // Partial backup
 	define("CHARSET", 'utf8');
+	define("GZIP_BACKUP_FILE", true); // Set to false if you want plain SQL backup files (not gzipped)
 
-By default backup files will be called *myphp-backup-{DB_NAME}-YYYYmmdd-HHMMSS.sql* and stored in *myphp-backup-files* subdirectory. Example output backup file:
+By default backup files will be called *myphp-backup-{DB_NAME}-YYYYmmdd-HHMMSS.sql.gz* and stored in *myphp-backup-files* subdirectory. Example output backup file:
 
-	myphp-backup-files/myphp-backup-daniloaz-20170828-131745.sql
+	myphp-backup-files/myphp-backup-daniloaz-20170828-131745.sql.gz
 
 **Restore:**
 
@@ -47,7 +48,7 @@ You can change the backup filename and subdirectory editing these lines. Don't f
 	define("DB_NAME", 'your_db_name');
 	define("DB_HOST", 'localhost');
 	define("BACKUP_DIR", 'myphp-backup-files'); // Comment this line to use same script's directory ('.')
-	define("BACKUP_FILE", 'your-backup-file.sql');
+	define("BACKUP_FILE", 'your-backup-file.sql.gz'); // Script will autodetect if backup file is gzipped or not based on .gz extension
 	define("CHARSET", 'utf8');
 
 -----
