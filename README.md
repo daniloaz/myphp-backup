@@ -24,7 +24,7 @@ Don't forget to set your database access credentials before performing any backu
 	define("DB_NAME", 'your_db_name');
 	define("DB_HOST", 'localhost');
 
-	define("BACKUP_DIR", 'myphp-backup-files');
+	define("BACKUP_DIR", 'myphp-backup-files'); // Comment this line to use same script's directory ('.')
 	define("TABLES", '*'); // Full backup
 	//define("TABLES", 'table1 table2 table3'); // Partial backup
 	define("CHARSET", 'utf8');
@@ -35,7 +35,7 @@ By default backup files will be called *myphp-backup-{DB_NAME}-YYYYmmdd-HHMMSS.s
 
 **Restore:**
 
-Upload *myphp-restore.php* script to your DocumentRoot directory and your backup file to a subdiretory called *myphp-backup-files*. Then simply run the script accessing http://www.example.com/myphp-restore.php or from command line.
+Upload *myphp-restore.php* script to your DocumentRoot directory and your backup file to a subdirectory called *myphp-backup-files*. Then simply run the script accessing http://www.example.com/myphp-restore.php or from command line.
 
 You can change the backup filename and subdirectory editing these lines. Don't forget to set your user credentials too!
 
