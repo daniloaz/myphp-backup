@@ -6,9 +6,6 @@
  * @version 1.0
  */
 
-// Report all errors
-error_reporting(E_ALL);
-
 /**
  * Define database parameters here
  */
@@ -16,16 +13,9 @@ define("DB_USER", 'your_username');
 define("DB_PASSWORD", 'your_password');
 define("DB_NAME", 'your_db_name');
 define("DB_HOST", 'localhost');
-define("BACKUP_DIR", 'myphp-backup');
+define("BACKUP_DIR", 'myphp-backup-files');
 define("BACKUP_FILE", 'your-backup-file.sql');
 define("CHARSET", 'utf8');
-
-/**
- * Instantiate Restore_Database and perform backup
- */
-$restoreDatabase = new Restore_Database(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
-$status = $restoreDatabase->restoreDb(BACKUP_DIR, BACKUP_FILE) ? 'OK' : 'KO';
-echo "<br />Restoration result: ".$status."<br />";
 
 /**
  * The Restore_Database class
@@ -64,8 +54,7 @@ class Restore_Database {
     /**
      * Constructor initializes database
      */
-    function Restore_Database($host, $username, $passwd, $dbName, $charset = 'utf8')
-    {
+    function Restore_Database($host, $username, $passwd, $dbName, $charset = 'utf8') {
         $this->host     = $host;
         $this->username = $username;
         $this->passwd   = $passwd;
@@ -74,8 +63,7 @@ class Restore_Database {
         $this->conn     = $this->initializeDatabase();
     }
 
-    protected function initializeDatabase()
-    {
+    protected function initializeDatabase() {
         try {
             $conn = mysqli_connect($this->host, $this->username, $this->passwd, $this->dbName);
             if (mysqli_connect_errno()) {
@@ -98,10 +86,8 @@ class Restore_Database {
      * Use '*' for whole database or 'table1 table2 table3...'
      * @param string $tables
      */
-    public function restoreDb($backupDir = '.', $backupFile = null)
-    {
-        try
-        {
+    public function restoreDb($backupDir = '.', $backupFile = null) {
+        try {
             $sql = '';
             $multiLineComment = false;
 
@@ -127,8 +113,12 @@ class Restore_Database {
                                 // execute query
                                 if(mysqli_query($this->conn, $sql)) {
                                     if (preg_match('/^CREATE TABLE `([^`]+)`/i', $sql, $tableName)) {
-                                        echo "Table " . $tableName[1] . " succesfully created.<br />";
-                                        ob_flush();flush();
+                                        if (php_sapi_name() != "cli") {
+                                            echo "Table `" . $tableName[1] . "` succesfully created.<br />";
+                                            ob_flush();flush();
+                                        } else {
+                                            echo "Table `" . $tableName[1] . "` succesfully created.\n";
+                                        }
                                     }
                                     $sql = '';
                                 } else {
@@ -144,13 +134,27 @@ class Restore_Database {
             } else {
                 throw new Exception("ERROR: couldn't open backup file " . $backupDir . '/' . $backupFile);
             } 
-        }
-        catch (Exception $e)
-        {
+        } catch (Exception $e) {
             print_r($e->getMessage());
             return false;
         }
 
         return true;
     }
+}
+
+/**
+ * Instantiate Restore_Database and perform backup
+ */
+// Report all errors
+error_reporting(E_ALL);
+// Set script max execution time
+set_time_limit(900); // 15 minutes
+
+$restoreDatabase = new Restore_Database(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+$status = $restoreDatabase->restoreDb(BACKUP_DIR, BACKUP_FILE) ? 'OK' : 'KO';
+if (php_sapi_name() != "cli") {
+    echo "<br />Restoration result: ".$status."<br />";
+} else {
+    echo "\nRestoration result: ".$status."\n\n";
 }
