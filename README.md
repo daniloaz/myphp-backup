@@ -5,11 +5,10 @@ Perform simple and fast MySQL backup/restore using PHP. You can use it to dump a
 
 It requires PHP 5.0.5 or later.
 
-##Usage
+Usage
 -----
 
-###Backup
-------
+**Backup:**
 
 Simply upload *myphp-backup.php* script to the DocumentRoot directory of your web application via FTP or other method and run it accessing http://www.example.com/myphp-backup.php.
 
@@ -28,9 +27,11 @@ Don't forget to set your database access credentials before performing any backu
 	//define("TABLES", 'table1 table2 table3'); // Partial backup
 	define("CHARSET", 'utf8');
 
+By default backup files will be called myphp-backup-{DB_NAME}-YYYYmmdd-HHMMss.sql and stored in myphp-backup-files subdirectory. Example output backup file:
 
-###Restore
-------
+	myphp-backup-files/myphp-backup-daniloaz-20170828-131745.sql
+
+**Restore:**
 
 Upload *myphp-restore.php* script to your DocumentRoot directory and your backup file to a subdiretory called myphp-backup-files. Then simply run the script accessing http://www.example.com/myphp-restore.php.
 
