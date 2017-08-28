@@ -14,7 +14,7 @@ define("DB_PASSWORD", 'your_password');
 define("DB_NAME", 'your_db_name');
 define("DB_HOST", 'localhost');
 define("BACKUP_DIR", 'myphp-backup-files'); // Comment this line to use same script's directory ('.')
-define("BACKUP_FILE", 'your-backup-file.sql');
+define("BACKUP_FILE", 'myphp-backup-your_db_name-20170828_195159.sql.gz');
 define("CHARSET", 'utf8');
 
 /**
@@ -24,43 +24,45 @@ class Restore_Database {
     /**
      * Host where the database is located
      */
-    var $host = '';
+    var $host;
 
     /**
      * Username used to connect to database
      */
-    var $username = '';
+    var $username;
 
     /**
      * Password used to connect to database
      */
-    var $passwd = '';
+    var $passwd;
 
     /**
      * Database to backup
      */
-    var $dbName = '';
+    var $dbName;
 
     /**
      * Database charset
      */
-    var $charset = '';
+    var $charset;
 
     /**
      * Database connection
      */
-    var $conn = '';
+    var $conn;
 
     /**
      * Constructor initializes database
      */
     function Restore_Database($host, $username, $passwd, $dbName, $charset = 'utf8') {
-        $this->host     = $host;
-        $this->username = $username;
-        $this->passwd   = $passwd;
-        $this->dbName   = $dbName;
-        $this->charset  = $charset;
-        $this->conn     = $this->initializeDatabase();
+        $this->host       = $host;
+        $this->username   = $username;
+        $this->passwd     = $passwd;
+        $this->dbName     = $dbName;
+        $this->charset    = $charset;
+        $this->conn       = $this->initializeDatabase();
+        $this->backupDir  = BACKUP_DIR ? BACKUP_DIR : '.';
+        $this->backupFile = BACKUP_FILE ? BACKUP_FILE : null;
     }
 
     protected function initializeDatabase() {
@@ -86,10 +88,23 @@ class Restore_Database {
      * Use '*' for whole database or 'table1 table2 table3...'
      * @param string $tables
      */
-    public function restoreDb($backupDir = '.', $backupFile = null) {
+    public function restoreDb() {
         try {
             $sql = '';
             $multiLineComment = false;
+
+            $backupDir = $this->backupDir;
+            $backupFile = $this->backupFile;
+
+            /**
+             * Gunzip file if gzipped
+             */
+            $backupFileIsGzipped = substr($backupFile, -3, 3) == '.gz' ? true : false;
+            if ($backupFileIsGzipped) {
+                if (!$backupFile = $this->gunzipBackupFile()) {
+                    throw new Exception("ERROR: couldn't gunzip backup file " . $backupDir . '/' . $backupFile);
+                }
+            }
 
             /**
             * Read backup file line by line
@@ -113,12 +128,7 @@ class Restore_Database {
                                 // execute query
                                 if(mysqli_query($this->conn, $sql)) {
                                     if (preg_match('/^CREATE TABLE `([^`]+)`/i', $sql, $tableName)) {
-                                        if (php_sapi_name() != "cli") {
-                                            echo "Table `" . $tableName[1] . "` succesfully created.<br />";
-                                            ob_flush();flush();
-                                        } else {
-                                            echo "Table `" . $tableName[1] . "` succesfully created.\n";
-                                        }
+                                        $this->obfPrint("Table succesfully created: `" . $tableName[1] . "`");
                                     }
                                     $sql = '';
                                 } else {
@@ -139,7 +149,97 @@ class Restore_Database {
             return false;
         }
 
+        if ($backupFileIsGzipped) {
+            unlink($backupDir . '/' . $backupFile);
+        }
+
         return true;
+    }
+
+    /*
+     * Gunzip backup file
+     *
+     * @return string New filename (without .gz appended and without backup directory) if success, or false if operation fails
+     */
+    protected function gunzipBackupFile() {
+        // Raising this value may increase performance
+        $bufferSize = 4096; // read 4kb at a time
+        $error = false;
+
+        $source = $this->backupDir . '/' . $this->backupFile;
+        $dest = $this->backupDir . '/' . date("Ymd_His", time()) . '_' . substr($this->backupFile, 0, -3);
+
+        $this->obfPrint('Gunzipping backup file ' . $source . ' ...', 0, 0);
+
+        // Remove $dest file if exists
+        if (file_exists($dest)) {
+            if (!unlink($dest)) {
+                return false;
+            }
+        }
+        
+        // Open gzipped and destination files in binary mode
+        if (!$srcFile = gzopen($this->backupDir . '/' . $this->backupFile, 'rb')) {
+            return false;
+        }
+        if (!$dstFile = fopen($dest, 'wb')) {
+            return false;
+        }
+
+        while (!gzeof($srcFile)) {
+            // Read buffer-size bytes
+            // Both fwrite and gzread are binary-safe
+            if(!fwrite($dstFile, gzread($srcFile, $bufferSize))) {
+                return false;
+            }
+        }
+
+        fclose($dstFile);
+        gzclose($srcFile);
+
+        $this->obfPrint(' OK', 0, 2);
+        // Return backup filename excluding backup directory
+        return str_replace($this->backupDir . '/', '', $dest);
+    }
+
+    /**
+     * Prints message forcing output buffer flush
+     *
+     */
+    public function obfPrint ($msg = '', $lineBreaksBefore = 0, $lineBreaksAfter = 1) {
+        if (!$msg) {
+            return false;
+        }
+
+        $output = '';
+
+        if (php_sapi_name() != "cli") {
+            $lineBreak = '<br />';
+        } else {
+            $lineBreak = '\n';
+        }
+
+        if ($lineBreaksBefore > 0) {
+            for ($i = 1; $i <= $lineBreaksBefore; $i++) {
+                $output .= $lineBreak;
+            }                
+        }
+
+        $output .= $msg;
+
+        if ($lineBreaksAfter > 0) {
+            for ($i = 1; $i <= $lineBreaksAfter; $i++) {
+                $output .= $lineBreak;
+            }                
+        }
+
+        if (php_sapi_name() == "cli") {
+            $output .= "\n";
+        }
+
+        echo $output;
+        ob_flush();
+        flush();
     }
 }
 
@@ -152,9 +252,5 @@ error_reporting(E_ALL);
 set_time_limit(900); // 15 minutes
 
 $restoreDatabase = new Restore_Database(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
-$status = $restoreDatabase->restoreDb(BACKUP_DIR, BACKUP_FILE) ? 'OK' : 'KO';
-if (php_sapi_name() != "cli") {
-    echo "<br />Restoration result: ".$status."<br />";
-} else {
-    echo "\nRestoration result: ".$status."\n\n";
-}
+$result = $restoreDatabase->restoreDb(BACKUP_DIR, BACKUP_FILE) ? 'OK' : 'KO';
+$restoreDatabase->obfPrint("Restoration result: ".$result, 1);

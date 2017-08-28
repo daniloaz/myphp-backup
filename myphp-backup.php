@@ -17,6 +17,7 @@ define("BACKUP_DIR", 'myphp-backup-files'); // Comment this line to use same scr
 define("TABLES", '*'); // Full backup
 //define("TABLES", 'table1 table2 table3'); // Partial backup
 define("CHARSET", 'utf8');
+define("GZIP_BACKUP_FILE", true);
 
 /**
  * The Backup_Database class
@@ -25,56 +26,62 @@ class Backup_Database {
     /**
      * Host where the database is located
      */
-    var $host = '';
+    var $host;
 
     /**
      * Username used to connect to database
      */
-    var $username = '';
+    var $username;
 
     /**
      * Password used to connect to database
      */
-    var $passwd = '';
+    var $passwd;
 
     /**
      * Database to backup
      */
-    var $dbName = '';
+    var $dbName;
 
     /**
      * Database charset
      */
-    var $charset = '';
+    var $charset;
 
     /**
      * Database connection
      */
-    var $conn = '';
+    var $conn;
 
     /**
      * Backup directory where backup files are stored 
      */
-    var $backupDir = '';
+    var $backupDir;
 
     /**
      * Output backup file
      */
-    var $backupFile = '';
+    var $backupFile;
+
+    /**
+     * Use gzip compression on backup file
+     */
+    var $gzipBackupFile;
 
     /**
      * Constructor initializes database
      */
     function Backup_Database($host, $username, $passwd, $dbName, $charset = 'utf8')
     {
-        $this->host       = $host;
-        $this->username   = $username;
-        $this->passwd     = $passwd;
-        $this->dbName     = $dbName;
-        $this->charset    = $charset;
-        $this->conn       = $this->initializeDatabase();
-        $this->backupDir  = BACKUP_DIR ? BACKUP_DIR : '.';
-        $this->backupFile = 'myphp-backup-'.$this->dbName.'-'.date("Ymd-His", time()).'.sql';
+        $this->host            = $host;
+        $this->username        = $username;
+        $this->passwd          = $passwd;
+        $this->dbName          = $dbName;
+        $this->charset         = $charset;
+        $this->conn            = $this->initializeDatabase();
+        $this->backupDir       = BACKUP_DIR ? BACKUP_DIR : '.';
+        $this->backupFile      = 'myphp-backup-'.$this->dbName.'-'.date("Ymd_His", time()).'.sql';
+        $this->gzipBackupFile  = GZIP_BACKUP_FILE ? GZIP_BACKUP_FILE : true;
     }
 
     protected function initializeDatabase()
@@ -103,22 +110,17 @@ class Backup_Database {
      */
     public function backupTables($tables = '*')
     {
-        try
-        {
+        try {
             /**
             * Tables to export
             */
-            if($tables == '*')
-            {
+            if($tables == '*') {
                 $tables = array();
                 $result = mysqli_query($this->conn, 'SHOW TABLES');
-                while($row = mysqli_fetch_row($result))
-                {
+                while($row = mysqli_fetch_row($result)) {
                     $tables[] = $row[0];
                 }
-            }
-            else
-            {
+            } else {
                 $tables = is_array($tables) ? $tables : explode(',',$tables);
             }
 
@@ -128,20 +130,15 @@ class Backup_Database {
             /**
             * Iterate tables
             */
-            foreach($tables as $table)
-            {
-                echo "Backing up `".$table."` table...";
-                // Send output buffer only if not running from command line
-                if (php_sapi_name() != "cli") {
-                    ob_flush();flush();
-                }
+            foreach($tables as $table) {
+                $this->obfPrint("Backing up `".$table."` table...", 0, 0);
 
                 /**
                  * CREATE TABLE
                  */
                 $sql .= 'DROP TABLE IF EXISTS `'.$table.'`;';
                 $row = mysqli_fetch_row(mysqli_query($this->conn, 'SHOW CREATE TABLE `'.$table.'`'));
-                $sql.= "\n\n".$row[1].";\n\n";
+                $sql .= "\n\n".$row[1].";\n\n";
 
                 /**
                  * INSERT INTO
@@ -155,32 +152,24 @@ class Backup_Database {
                 $numBatches = intval($numRows / $batchSize) + 1; // Number of while-loop calls to perform
                 for ($b = 1; $b <= $numBatches; $b++) {
                     
-                    $query = 'SELECT * FROM `'.$table.'` LIMIT '.($b*$batchSize-$batchSize+1).','.($b*$batchSize);
+                    $query = 'SELECT * FROM `'.$table.'` LIMIT '.($b*$batchSize-$batchSize).','.$batchSize;
                     $result = mysqli_query($this->conn, $query);
                     $numFields = mysqli_num_fields($result);
 
-                    for ($i = 0; $i < $numFields; $i++) 
-                    {
+                    for ($i = 0; $i < $numFields; $i++) {
                         $rowCount = 0;
-                        while($row = mysqli_fetch_row($result))
-                        {
-                            $rowCount++;
+                        while($row = mysqli_fetch_row($result)) {
                             $sql .= 'INSERT INTO `'.$table.'` VALUES(';
-                            for($j=0; $j<$numFields; $j++) 
-                            {
+                            for($j=0; $j<$numFields; $j++) {
                                 $row[$j] = addslashes($row[$j]);
                                 $row[$j] = str_replace("\n","\\n",$row[$j]);
-                                if (isset($row[$j]))
-                                {
+                                if (isset($row[$j])) {
                                     $sql .= '"'.$row[$j].'"' ;
-                                }
-                                else
-                                {
+                                } else {
                                     $sql.= '""';
                                 }
 
-                                if ($j < ($numFields-1))
-                                {
+                                if ($j < ($numFields-1)) {
                                     $sql .= ',';
                                 }
                             }
@@ -195,46 +184,121 @@ class Backup_Database {
 
                 $sql.="\n\n\n";
 
-                // Send output buffer only if not running from command line
-                if (php_sapi_name() != "cli") {
-                    echo " OK <br />";
-                    ob_flush();flush();
-                } else {
-                    echo " OK\n";
-                }
+                $this->obfPrint(" OK");
             }
-        }
-        catch (Exception $e)
-        {
-            var_dump($e->getMessage());
+        } catch (Exception $e) {
+            print_r($e->getMessage());
             return false;
         }
 
-        return $this->saveFile($sql);
+        return ($this->saveFile($sql) and $this->gzipBackupFile());
     }
 
     /**
      * Save SQL to file
      * @param string $sql
      */
-    protected function saveFile(&$sql)
-    {
+    protected function saveFile(&$sql) {
         if (!$sql) return false;
 
-        try
-        {
+        try {
+            if (!$this->gzipBackupFile) {
+                $this->obfPrint('Saving backup file to ' . $dest . ' ...', 1, 0);
+            }
+
             if (!file_exists($this->backupDir)) {
                 mkdir($this->backupDir, 0777, true);
             }
+
             file_put_contents($this->backupDir.'/'.$this->backupFile, $sql, FILE_APPEND | LOCK_EX);
-        }
-        catch (Exception $e)
-        {
+        } catch (Exception $e) {
             print_r($e->getMessage());
             return false;
         }
 
+        if (!$this->gzipBackupFile) {
+            $this->obfPrint(' OK');
+        }
+
         return true;
+    }
+
+    /*
+     * Gzip backup file
+     *
+     * @param integer $level GZIP compression level (default: 9)
+     * @return string New filename (with .gz appended) if success, or false if operation fails
+     */
+    protected function gzipBackupFile($level = 9) {
+        if (!$this->gzipBackupFile) {
+            return true;
+        }
+
+        $source = $this->backupDir . '/' . $this->backupFile;
+        $dest =  $source . '.gz';
+
+        $this->obfPrint('Gzipping backup file to ' . $dest . ' ...', 1, 0);
+
+        $mode = 'wb' . $level;
+        if ($fpOut = gzopen($dest, $mode)) {
+            if ($fpIn = fopen($source,'rb')) {
+                while (!feof($fpIn)) {
+                    gzwrite($fpOut, fread($fpIn, 1024 * 256));
+                }
+                fclose($fpIn);
+            } else {
+                return false;
+            }
+            gzclose($fpOut);
+            if(!unlink($source)) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+        
+        $this->obfPrint(' OK');
+        return $dest;
+    }
+
+    /**
+     * Prints message forcing output buffer flush
+     *
+     */
+    public function obfPrint ($msg = '', $lineBreaksBefore = 0, $lineBreaksAfter = 1) {
+        if (!$msg) {
+            return false;
+        }
+
+        $output = '';
+
+        if (php_sapi_name() != "cli") {
+            $lineBreak = '<br />';
+        } else {
+            $lineBreak = '\n';
+        }
+
+        if ($lineBreaksBefore > 0) {
+            for ($i = 1; $i <= $lineBreaksBefore; $i++) {
+                $output .= $lineBreak;
+            }                
+        }
+
+        $output .= $msg;
+
+        if ($lineBreaksAfter > 0) {
+            for ($i = 1; $i <= $lineBreaksAfter; $i++) {
+                $output .= $lineBreak;
+            }                
+        }
+
+        if (php_sapi_name() == "cli") {
+            $output .= "\n";
+        }
+
+        echo $output;
+        ob_flush();
+        flush();
     }
 }
 
@@ -248,9 +312,5 @@ error_reporting(E_ALL);
 set_time_limit(900); // 15 minutes
 
 $backupDatabase = new Backup_Database(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
-$status = $backupDatabase->backupTables(TABLES, BACKUP_DIR) ? 'OK' : 'KO';
-if (php_sapi_name() != "cli") {
-    echo "<br />Backup result: ".$status."<br />";
-} else {
-    echo "\nBackup result: ".$status."\n\n";
-}
+$result = $backupDatabase->backupTables(TABLES, BACKUP_DIR) ? 'OK' : 'KO';
+$backupDatabase->obfPrint('Backup result: ' . $result, 1);
