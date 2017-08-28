@@ -1,4 +1,4 @@
-#myphp-backup
+myphp-backup
 ============
 
 Perform simple and fast MySQL backup/restore using PHP. You can use it to dump a full database or only some tables.
@@ -29,13 +29,13 @@ Don't forget to set your database access credentials before performing any backu
 	//define("TABLES", 'table1 table2 table3'); // Partial backup
 	define("CHARSET", 'utf8');
 
-By default backup files will be called myphp-backup-{DB_NAME}-YYYYmmdd-HHMMSS.sql and stored in myphp-backup-files subdirectory. Example output backup file:
+By default backup files will be called *myphp-backup-{DB_NAME}-YYYYmmdd-HHMMSS.sql* and stored in *myphp-backup-files* subdirectory. Example output backup file:
 
 	myphp-backup-files/myphp-backup-daniloaz-20170828-131745.sql
 
 **Restore:**
 
-Upload *myphp-restore.php* script to your DocumentRoot directory and your backup file to a subdiretory called myphp-backup-files. Then simply run the script accessing http://www.example.com/myphp-restore.php or from command line.
+Upload *myphp-restore.php* script to your DocumentRoot directory and your backup file to a subdiretory called *myphp-backup-files*. Then simply run the script accessing http://www.example.com/myphp-restore.php or from command line.
 
 You can change the backup filename and subdirectory editing these lines. Don't forget to set your user credentials too!
 
@@ -53,4 +53,4 @@ You can change the backup filename and subdirectory editing these lines. Don't f
 -----
 Project at GitHub: https://github.com/daniloaz/myphp-backup
 
-(c) Daniel López Azaña, 2012 (http://www.daniloaz.com)
+(c) Daniel López Azaña, 2012-2017 (http://www.daniloaz.com)
