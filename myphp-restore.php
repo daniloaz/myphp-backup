@@ -13,7 +13,7 @@ define("DB_USER", 'your_username');
 define("DB_PASSWORD", 'your_password');
 define("DB_NAME", 'your_db_name');
 define("DB_HOST", 'localhost');
-define("BACKUP_DIR", 'myphp-backup-files');
+define("BACKUP_DIR", 'myphp-backup-files'); // Comment this line to use same script's directory ('.')
 define("BACKUP_FILE", 'your-backup-file.sql');
 define("CHARSET", 'utf8');
 
