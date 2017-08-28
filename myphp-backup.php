@@ -6,9 +6,6 @@
  * @version 1.0
  */
 
-// Report all errors
-error_reporting(E_ALL);
-
 /**
  * Define database parameters here
  */
@@ -16,17 +13,10 @@ define("DB_USER", 'your_username');
 define("DB_PASSWORD", 'your_password');
 define("DB_NAME", 'your_db_name');
 define("DB_HOST", 'localhost');
-define("BACKUP_DIR", 'myphp-backup');
+define("BACKUP_DIR", 'myphp-backup-files');
 define("TABLES", '*'); // Full backup
 //define("TABLES", 'table1 table2 table3'); // Partial backup
 define("CHARSET", 'utf8');
-
-/**
- * Instantiate Backup_Database and perform backup
- */
-$backupDatabase = new Backup_Database(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
-$status = $backupDatabase->backupTables(TABLES, BACKUP_DIR) ? 'OK' : 'KO';
-echo "<br />Backup result: ".$status."<br />";
 
 /**
  * The Backup_Database class
@@ -63,16 +53,28 @@ class Backup_Database {
     var $conn = '';
 
     /**
+     * Backup directory where backup files are stored 
+     */
+    var $backupDir = '';
+
+    /**
+     * Output backup file
+     */
+    var $backupFile = '';
+
+    /**
      * Constructor initializes database
      */
     function Backup_Database($host, $username, $passwd, $dbName, $charset = 'utf8')
     {
-        $this->host     = $host;
-        $this->username = $username;
-        $this->passwd   = $passwd;
-        $this->dbName   = $dbName;
-        $this->charset  = $charset;
-        $this->conn     = $this->initializeDatabase();
+        $this->host       = $host;
+        $this->username   = $username;
+        $this->passwd     = $passwd;
+        $this->dbName     = $dbName;
+        $this->charset    = $charset;
+        $this->conn       = $this->initializeDatabase();
+        $this->backupDir  = BACKUP_DIR ? BACKUP_DIR : '.';
+        $this->backupFile = 'myphp-backup-'.$this->dbName.'-'.date("Ymd-His", time()).'.sql';
     }
 
     protected function initializeDatabase()
@@ -99,7 +101,7 @@ class Backup_Database {
      * Use '*' for whole database or 'table1 table2 table3...'
      * @param string $tables
      */
-    public function backupTables($tables = '*', $backupDir = '.')
+    public function backupTables($tables = '*')
     {
         try
         {
@@ -120,7 +122,7 @@ class Backup_Database {
                 $tables = is_array($tables) ? $tables : explode(',',$tables);
             }
 
-            $sql = 'CREATE DATABASE IF NOT EXISTS '.$this->dbName.";\n\n";
+            $sql = 'CREATE DATABASE IF NOT EXISTS `'.$this->dbName."`;\n\n";
             $sql .= 'USE '.$this->dbName.";\n\n";
 
             /**
@@ -128,46 +130,78 @@ class Backup_Database {
             */
             foreach($tables as $table)
             {
-                echo "Backing up ".$table." table...";
+                echo "Backing up `".$table."` table...";
+                // Send output buffer only if not running from command line
+                if (php_sapi_name() != "cli") {
+                    ob_flush();flush();
+                }
 
-                $result = mysqli_query($this->conn, 'SELECT * FROM '.$table);
-                $numFields = mysqli_num_fields($result);
+                /**
+                 * CREATE TABLE
+                 */
+                $sql .= 'DROP TABLE IF EXISTS `'.$table.'`;';
+                $row = mysqli_fetch_row(mysqli_query($this->conn, 'SHOW CREATE TABLE `'.$table.'`'));
+                $sql.= "\n\n".$row[1].";\n\n";
 
-                $sql .= 'DROP TABLE IF EXISTS '.$table.';';
-                $row2 = mysqli_fetch_row(mysqli_query($this->conn, 'SHOW CREATE TABLE '.$table));
-                $sql.= "\n\n".$row2[1].";\n\n";
+                /**
+                 * INSERT INTO
+                 */
 
-                for ($i = 0; $i < $numFields; $i++) 
-                {
-                    while($row = mysqli_fetch_row($result))
+                $row = mysqli_fetch_row(mysqli_query($this->conn, 'SELECT COUNT(*) FROM `'.$table.'`'));
+                $numRows = $row[0];
+
+                // Split table in batches in order to not exhaust system memory 
+                $batchSize = 1000; // Number of rows per batch
+                $numBatches = intval($numRows / $batchSize) + 1; // Number of while-loop calls to perform
+                for ($b = 1; $b <= $numBatches; $b++) {
+                    
+                    $query = 'SELECT * FROM `'.$table.'` LIMIT '.($b*$batchSize-$batchSize+1).','.($b*$batchSize);
+                    $result = mysqli_query($this->conn, $query);
+                    $numFields = mysqli_num_fields($result);
+
+                    for ($i = 0; $i < $numFields; $i++) 
                     {
-                        $sql .= 'INSERT INTO '.$table.' VALUES(';
-                        for($j=0; $j<$numFields; $j++) 
+                        $rowCount = 0;
+                        while($row = mysqli_fetch_row($result))
                         {
-                            $row[$j] = addslashes($row[$j]);
-                            $row[$j] = str_replace("\n","\\n",$row[$j]);
-                            if (isset($row[$j]))
+                            $rowCount++;
+                            $sql .= 'INSERT INTO `'.$table.'` VALUES(';
+                            for($j=0; $j<$numFields; $j++) 
                             {
-                                $sql .= '"'.$row[$j].'"' ;
-                            }
-                            else
-                            {
-                                $sql.= '""';
+                                $row[$j] = addslashes($row[$j]);
+                                $row[$j] = str_replace("\n","\\n",$row[$j]);
+                                if (isset($row[$j]))
+                                {
+                                    $sql .= '"'.$row[$j].'"' ;
+                                }
+                                else
+                                {
+                                    $sql.= '""';
+                                }
+
+                                if ($j < ($numFields-1))
+                                {
+                                    $sql .= ',';
+                                }
                             }
 
-                            if ($j < ($numFields-1))
-                            {
-                                $sql .= ',';
-                            }
+                            $sql.= ");\n";
                         }
-
-                        $sql.= ");\n";
                     }
+
+                    $this->saveFile($sql);
+                    $sql = '';
                 }
 
                 $sql.="\n\n\n";
 
-                echo " OK <br />";
+                // Send output buffer only if not running from command line
+                if (php_sapi_name() != "cli") {
+                    echo " OK <br />";
+                    ob_flush();flush();
+                } else {
+                    echo " OK\n";
+                }
             }
         }
         catch (Exception $e)
@@ -176,32 +210,47 @@ class Backup_Database {
             return false;
         }
 
-        return $this->saveFile($sql, $backupDir);
+        return $this->saveFile($sql);
     }
 
     /**
      * Save SQL to file
      * @param string $sql
      */
-    protected function saveFile(&$sql, $backupDir = '.')
+    protected function saveFile(&$sql)
     {
         if (!$sql) return false;
 
         try
         {
-            if (!file_exists($backupDir)) {
-                mkdir($backupDir, 0777, true);
+            if (!file_exists($this->backupDir)) {
+                mkdir($this->backupDir, 0777, true);
             }
-            $handle = fopen($backupDir.'/myphp-backup-'.$this->dbName.'-'.date("Ymd-His", time()).'.sql','w+');
-            fwrite($handle, $sql);
-            fclose($handle);
+            file_put_contents($this->backupDir.'/'.$this->backupFile, $sql, FILE_APPEND | LOCK_EX);
         }
         catch (Exception $e)
         {
-            var_dump($e->getMessage());
+            print_r($e->getMessage());
             return false;
         }
 
         return true;
     }
+}
+
+/**
+ * Instantiate Backup_Database and perform backup
+ */
+
+// Report all errors
+error_reporting(E_ALL);
+// Set script max execution time
+set_time_limit(900); // 15 minutes
+
+$backupDatabase = new Backup_Database(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+$status = $backupDatabase->backupTables(TABLES, BACKUP_DIR) ? 'OK' : 'KO';
+if (php_sapi_name() != "cli") {
+    echo "<br />Backup result: ".$status."<br />";
+} else {
+    echo "\nBackup result: ".$status."\n\n";
 }
