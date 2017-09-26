@@ -71,8 +71,7 @@ class Backup_Database {
     /**
      * Constructor initializes database
      */
-    function Backup_Database($host, $username, $passwd, $dbName, $charset = 'utf8')
-    {
+    public function __construct($host, $username, $passwd, $dbName, $charset = 'utf8') {
         $this->host            = $host;
         $this->username        = $username;
         $this->passwd          = $passwd;
@@ -84,8 +83,7 @@ class Backup_Database {
         $this->gzipBackupFile  = GZIP_BACKUP_FILE ? GZIP_BACKUP_FILE : true;
     }
 
-    protected function initializeDatabase()
-    {
+    protected function initializeDatabase() {
         try {
             $conn = mysqli_connect($this->host, $this->username, $this->passwd, $this->dbName);
             if (mysqli_connect_errno()) {
@@ -108,8 +106,7 @@ class Backup_Database {
      * Use '*' for whole database or 'table1 table2 table3...'
      * @param string $tables
      */
-    public function backupTables($tables = '*')
-    {
+    public function backupTables($tables = '*') {
         try {
             /**
             * Tables to export

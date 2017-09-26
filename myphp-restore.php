@@ -54,7 +54,7 @@ class Restore_Database {
     /**
      * Constructor initializes database
      */
-    function Restore_Database($host, $username, $passwd, $dbName, $charset = 'utf8') {
+    function __construct($host, $username, $passwd, $dbName, $charset = 'utf8') {
         $this->host       = $host;
         $this->username   = $username;
         $this->passwd     = $passwd;
