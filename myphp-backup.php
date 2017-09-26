@@ -128,7 +128,7 @@ class Backup_Database {
             * Iterate tables
             */
             foreach($tables as $table) {
-                $this->obfPrint("Backing up `".$table."` table...", 0, 0);
+                $this->obfPrint("Backing up `".$table."` table...".str_repeat('.', 50-strlen($table)), 0, 0);
 
                 /**
                  * CREATE TABLE
@@ -200,7 +200,7 @@ class Backup_Database {
 
         try {
             if (!$this->gzipBackupFile) {
-                $this->obfPrint('Saving backup file to ' . $dest . ' ...', 1, 0);
+                $this->obfPrint('Saving backup file to ' . $dest . '... ', 1, 0);
             }
 
             if (!file_exists($this->backupDir)) {
@@ -214,7 +214,7 @@ class Backup_Database {
         }
 
         if (!$this->gzipBackupFile) {
-            $this->obfPrint(' OK');
+            $this->obfPrint('OK');
         }
 
         return true;
@@ -234,7 +234,7 @@ class Backup_Database {
         $source = $this->backupDir . '/' . $this->backupFile;
         $dest =  $source . '.gz';
 
-        $this->obfPrint('Gzipping backup file to ' . $dest . ' ...', 1, 0);
+        $this->obfPrint('Gzipping backup file to ' . $dest . '... ', 1, 0);
 
         $mode = 'wb' . $level;
         if ($fpOut = gzopen($dest, $mode)) {
@@ -254,7 +254,7 @@ class Backup_Database {
             return false;
         }
         
-        $this->obfPrint(' OK');
+        $this->obfPrint('OK');
         return $dest;
     }
 
@@ -270,9 +270,9 @@ class Backup_Database {
         $output = '';
 
         if (php_sapi_name() != "cli") {
-            $lineBreak = '<br />';
+            $lineBreak = "<br />";
         } else {
-            $lineBreak = '\n';
+            $lineBreak = "\n";
         }
 
         if ($lineBreaksBefore > 0) {
@@ -289,12 +289,12 @@ class Backup_Database {
             }                
         }
 
-        if (php_sapi_name() == "cli") {
-            $output .= "\n";
+        echo $output;
+
+        if (php_sapi_name() != "cli") {
+            ob_flush();
         }
 
-        echo $output;
-        ob_flush();
         flush();
     }
 }
@@ -308,6 +308,14 @@ error_reporting(E_ALL);
 // Set script max execution time
 set_time_limit(900); // 15 minutes
 
+if (php_sapi_name() != "cli") {
+    echo '<div style="font-family: monospace;">';
+}
+
 $backupDatabase = new Backup_Database(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
 $result = $backupDatabase->backupTables(TABLES, BACKUP_DIR) ? 'OK' : 'KO';
 $backupDatabase->obfPrint('Backup result: ' . $result, 1);
+
+if (php_sapi_name() != "cli") {
+    echo '</div>';
+}

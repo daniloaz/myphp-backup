@@ -169,7 +169,7 @@ class Restore_Database {
         $source = $this->backupDir . '/' . $this->backupFile;
         $dest = $this->backupDir . '/' . date("Ymd_His", time()) . '_' . substr($this->backupFile, 0, -3);
 
-        $this->obfPrint('Gunzipping backup file ' . $source . ' ...', 0, 0);
+        $this->obfPrint('Gunzipping backup file ' . $source . '... ', 0, 0);
 
         // Remove $dest file if exists
         if (file_exists($dest)) {
@@ -197,7 +197,7 @@ class Restore_Database {
         fclose($dstFile);
         gzclose($srcFile);
 
-        $this->obfPrint(' OK', 0, 2);
+        $this->obfPrint('OK', 0, 2);
         // Return backup filename excluding backup directory
         return str_replace($this->backupDir . '/', '', $dest);
     }
@@ -214,9 +214,9 @@ class Restore_Database {
         $output = '';
 
         if (php_sapi_name() != "cli") {
-            $lineBreak = '<br />';
+            $lineBreak = "<br />";
         } else {
-            $lineBreak = '\n';
+            $lineBreak = "\n";
         }
 
         if ($lineBreaksBefore > 0) {
@@ -238,7 +238,11 @@ class Restore_Database {
         }
 
         echo $output;
-        ob_flush();
+
+        if (php_sapi_name() != "cli") {
+            ob_flush();
+        }
+
         flush();
     }
 }
@@ -251,6 +255,14 @@ error_reporting(E_ALL);
 // Set script max execution time
 set_time_limit(900); // 15 minutes
 
+if (php_sapi_name() != "cli") {
+    echo '<div style="font-family: monospace;">';
+}
+
 $restoreDatabase = new Restore_Database(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
 $result = $restoreDatabase->restoreDb(BACKUP_DIR, BACKUP_FILE) ? 'OK' : 'KO';
 $restoreDatabase->obfPrint("Restoration result: ".$result, 1);
+
+if (php_sapi_name() != "cli") {
+    echo '</div>';
+}
