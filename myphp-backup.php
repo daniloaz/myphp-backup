@@ -80,7 +80,7 @@ class Backup_Database {
         $this->conn            = $this->initializeDatabase();
         $this->backupDir       = BACKUP_DIR ? BACKUP_DIR : '.';
         $this->backupFile      = 'myphp-backup-'.$this->dbName.'-'.date("Ymd_His", time()).'.sql';
-        $this->gzipBackupFile  = GZIP_BACKUP_FILE ? GZIP_BACKUP_FILE : true;
+        $this->gzipBackupFile  = defined('GZIP_BACKUP_FILE') ? GZIP_BACKUP_FILE : true;
     }
 
     protected function initializeDatabase() {
@@ -158,12 +158,12 @@ class Backup_Database {
                         while($row = mysqli_fetch_row($result)) {
                             $sql .= 'INSERT INTO `'.$table.'` VALUES(';
                             for($j=0; $j<$numFields; $j++) {
-                                $row[$j] = addslashes($row[$j]);
-                                $row[$j] = str_replace("\n","\\n",$row[$j]);
                                 if (isset($row[$j])) {
+                                    $row[$j] = addslashes($row[$j]);
+                                    $row[$j] = str_replace("\n","\\n",$row[$j]);
                                     $sql .= '"'.$row[$j].'"' ;
                                 } else {
-                                    $sql.= '""';
+                                    $sql.= 'NULL';
                                 }
 
                                 if ($j < ($numFields-1)) {
@@ -183,12 +183,18 @@ class Backup_Database {
 
                 $this->obfPrint(" OK");
             }
+
+            if ($this->gzipBackupFile) {
+                $this->gzipBackupFile();
+            } else {
+                $this->obfPrint('Backup file succesfully saved to ' . $this->backupDir.'/'.$this->backupFile, 1, 1);
+            }
         } catch (Exception $e) {
             print_r($e->getMessage());
             return false;
         }
 
-        return ($this->saveFile($sql) and $this->gzipBackupFile());
+        return true;
     }
 
     /**
@@ -199,22 +205,16 @@ class Backup_Database {
         if (!$sql) return false;
 
         try {
-            if (!$this->gzipBackupFile) {
-                $this->obfPrint('Saving backup file to ' . $dest . '... ', 1, 0);
-            }
 
             if (!file_exists($this->backupDir)) {
                 mkdir($this->backupDir, 0777, true);
             }
 
             file_put_contents($this->backupDir.'/'.$this->backupFile, $sql, FILE_APPEND | LOCK_EX);
+
         } catch (Exception $e) {
             print_r($e->getMessage());
             return false;
-        }
-
-        if (!$this->gzipBackupFile) {
-            $this->obfPrint('OK');
         }
 
         return true;
