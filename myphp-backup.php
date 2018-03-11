@@ -122,7 +122,7 @@ class Backup_Database {
             }
 
             $sql = 'CREATE DATABASE IF NOT EXISTS `'.$this->dbName."`;\n\n";
-            $sql .= 'USE '.$this->dbName.";\n\n";
+            $sql .= 'USE `'.$this->dbName."`;\n\n";
 
             /**
             * Iterate tables
