@@ -69,6 +69,11 @@ class Backup_Database {
     var $gzipBackupFile;
 
     /**
+     * Content of standard output
+     */
+    var $output;
+
+    /**
      * Constructor initializes database
      */
     public function __construct($host, $username, $passwd, $dbName, $charset = 'utf8') {
@@ -81,6 +86,7 @@ class Backup_Database {
         $this->backupDir       = BACKUP_DIR ? BACKUP_DIR : '.';
         $this->backupFile      = 'myphp-backup-'.$this->dbName.'-'.date("Ymd_His", time()).'.sql';
         $this->gzipBackupFile  = defined('GZIP_BACKUP_FILE') ? GZIP_BACKUP_FILE : true;
+        $this->output          = '';
     }
 
     protected function initializeDatabase() {
@@ -289,13 +295,28 @@ class Backup_Database {
             }                
         }
 
+
+        // Save output for later use
+        $this->output .= str_replace('<br />', '\n', $output);
+
         echo $output;
+
 
         if (php_sapi_name() != "cli") {
             ob_flush();
         }
 
+        $this->output .= " ";
+
         flush();
+    }
+
+    /**
+     * Returns full execution output
+     *
+     */
+    public function getOutput() {
+        return $this->output;
     }
 }
 
@@ -315,6 +336,9 @@ if (php_sapi_name() != "cli") {
 $backupDatabase = new Backup_Database(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
 $result = $backupDatabase->backupTables(TABLES, BACKUP_DIR) ? 'OK' : 'KO';
 $backupDatabase->obfPrint('Backup result: ' . $result, 1);
+
+// Use $output variable for further processing, for example to send it by email
+$output = $backupDatabase->getOutput();
 
 if (php_sapi_name() != "cli") {
     echo '</div>';
