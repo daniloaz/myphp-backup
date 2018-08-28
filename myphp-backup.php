@@ -205,6 +205,33 @@ class Backup_Database {
                     }
                 }
 
+                /**
+                 * CREATE TRIGGER
+                 */
+
+                // Check if there are some TRIGGERS associated to the table
+                $query = "SHOW TRIGGERS LIKE '" . $table . "%'";
+                $result = mysqli_query ($this->conn, $query);
+                if ($result) {
+                    $triggers = array();
+                    while ($trigger = mysqli_fetch_row ($result)) {
+                        $triggers[] = $trigger[0];
+                    }
+                    
+                    // Iterate through triggers of the table
+                    foreach ( $triggers as $trigger ) {
+                        $query= 'SHOW CREATE TRIGGER `' . $trigger . '`';
+                        $result = mysqli_fetch_array (mysqli_query ($this->conn, $query));
+                        $sql.= "\nDROP TRIGGER IF EXISTS `" . $trigger . "`;\n";
+                        $sql.= "DELIMITER $$\n" . $result[2] . "\n$$\nDELIMITER ;\n";
+                    }
+
+                    $sql.= "\n";
+
+                    $this->saveFile($sql);
+                    $sql = '';
+                }
+ 
                 $sql.="\n\n\n";
 
                 $this->obfPrint('OK');
