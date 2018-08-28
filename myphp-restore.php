@@ -14,7 +14,7 @@ define("DB_PASSWORD", 'your_password');
 define("DB_NAME", 'your_db_name');
 define("DB_HOST", 'localhost');
 define("BACKUP_DIR", 'myphp-backup-files'); // Comment this line to use same script's directory ('.')
-define("BACKUP_FILE", 'your-backup-file.sql.gz'); // Script will autodetect if backup file is gzipped based on .gz extension
+define("BACKUP_FILE", 'myphp-backup-your_db_name-20180802_135227.sql.gz'); // Script will autodetect if backup file is gzipped based on .gz extension
 define("CHARSET", 'utf8');
 
 /**
@@ -169,7 +169,7 @@ class Restore_Database {
         $source = $this->backupDir . '/' . $this->backupFile;
         $dest = $this->backupDir . '/' . date("Ymd_His", time()) . '_' . substr($this->backupFile, 0, -3);
 
-        $this->obfPrint('Gunzipping backup file ' . $source . '... ', 0, 0);
+        $this->obfPrint('Gunzipping backup file ' . $source . '... ', 1, 1);
 
         // Remove $dest file if exists
         if (file_exists($dest)) {
@@ -197,7 +197,6 @@ class Restore_Database {
         fclose($dstFile);
         gzclose($srcFile);
 
-        $this->obfPrint('OK', 0, 2);
         // Return backup filename excluding backup directory
         return str_replace($this->backupDir . '/', '', $dest);
     }
@@ -211,6 +210,7 @@ class Restore_Database {
             return false;
         }
 
+        $msg = date("Y-m-d H:i:s") . ' - ' . $msg;
         $output = '';
 
         if (php_sapi_name() != "cli") {

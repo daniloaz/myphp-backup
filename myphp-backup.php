@@ -17,7 +17,9 @@ define("BACKUP_DIR", 'myphp-backup-files'); // Comment this line to use same scr
 define("TABLES", '*'); // Full backup
 //define("TABLES", 'table1, table2, table3'); // Partial backup
 define("CHARSET", 'utf8');
-define("GZIP_BACKUP_FILE", true);  // Set to false if you want plain SQL backup files (not gzipped)
+define("GZIP_BACKUP_FILE", true); // Set to false if you want plain SQL backup files (not gzipped)
+define("BATCH_SIZE", 1000); // Batch size when selecting rows from database in order to not exhaust system memory
+                           // Also number of rows per INSERT statement in backup file
 
 /**
  * The Backup_Database class
@@ -74,6 +76,11 @@ class Backup_Database {
     var $output;
 
     /**
+     * Batch size, number of rows to process per iteration
+     */
+    var $batchSize;
+
+    /**
      * Constructor initializes database
      */
     public function __construct($host, $username, $passwd, $dbName, $charset = 'utf8') {
@@ -86,6 +93,7 @@ class Backup_Database {
         $this->backupDir       = BACKUP_DIR ? BACKUP_DIR : '.';
         $this->backupFile      = 'myphp-backup-'.$this->dbName.'-'.date("Ymd_His", time()).'.sql';
         $this->gzipBackupFile  = defined('GZIP_BACKUP_FILE') ? GZIP_BACKUP_FILE : true;
+        $this->batchSize       = defined('BATCH_SIZE') ? BATCH_SIZE : 1000; // default 1000 rows
         $this->output          = '';
     }
 
@@ -151,11 +159,11 @@ class Backup_Database {
                 $numRows = $row[0];
 
                 // Split table in batches in order to not exhaust system memory 
-                $batchSize = 1000; // Number of rows per batch
-                $numBatches = intval($numRows / $batchSize) + 1; // Number of while-loop calls to perform
+                $numBatches = intval($numRows / $this->batchSize) + 1; // Number of while-loop calls to perform
+
                 for ($b = 1; $b <= $numBatches; $b++) {
                     
-                    $query = 'SELECT * FROM `'.$table.'` LIMIT '.($b*$batchSize-$batchSize).','.$batchSize;
+                    $query = 'SELECT * FROM `' . $table . '` LIMIT ' . ($b * $this->batchSize - $this->batchSize) . ',' . $this->batchSize;
                     $result = mysqli_query($this->conn, $query);
                     $numFields = mysqli_num_fields($result);
 
@@ -187,7 +195,7 @@ class Backup_Database {
 
                 $sql.="\n\n\n";
 
-                $this->obfPrint(" OK");
+                $this->obfPrint('OK');
             }
 
             if ($this->gzipBackupFile) {
@@ -273,6 +281,9 @@ class Backup_Database {
             return false;
         }
 
+        if ($msg != 'OK' and $msg != 'KO') {
+            $msg = date("Y-m-d H:i:s") . ' - ' . $msg;
+        }
         $output = '';
 
         if (php_sapi_name() != "cli") {
