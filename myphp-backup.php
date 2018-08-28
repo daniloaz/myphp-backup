@@ -19,7 +19,7 @@ define("TABLES", '*'); // Full backup
 define("CHARSET", 'utf8');
 define("GZIP_BACKUP_FILE", true); // Set to false if you want plain SQL backup files (not gzipped)
 define("BATCH_SIZE", 1000); // Batch size when selecting rows from database in order to not exhaust system memory
-                           // Also number of rows per INSERT statement in backup file
+                            // Also number of rows per INSERT statement in backup file
 
 /**
  * The Backup_Database class
@@ -165,32 +165,44 @@ class Backup_Database {
                     
                     $query = 'SELECT * FROM `' . $table . '` LIMIT ' . ($b * $this->batchSize - $this->batchSize) . ',' . $this->batchSize;
                     $result = mysqli_query($this->conn, $query);
+                    $realBatchSize = mysqli_num_rows ($result); // Last batch size can be different from $this->batchSize
                     $numFields = mysqli_num_fields($result);
 
-                    for ($i = 0; $i < $numFields; $i++) {
-                        $rowCount = 0;
-                        while($row = mysqli_fetch_row($result)) {
-                            $sql .= 'INSERT INTO `'.$table.'` VALUES(';
-                            for($j=0; $j<$numFields; $j++) {
-                                if (isset($row[$j])) {
-                                    $row[$j] = addslashes($row[$j]);
-                                    $row[$j] = str_replace("\n","\\n",$row[$j]);
-                                    $sql .= '"'.$row[$j].'"' ;
+                    if ($realBatchSize !== 0) {
+                        $sql .= 'INSERT INTO `'.$table.'` VALUES ';
+
+                        for ($i = 0; $i < $numFields; $i++) {
+                            $rowCount = 1;
+                            while($row = mysqli_fetch_row($result)) {
+                                $sql.='(';
+                                for($j=0; $j<$numFields; $j++) {
+                                    if (isset($row[$j])) {
+                                        $row[$j] = addslashes($row[$j]);
+                                        $row[$j] = str_replace("\n","\\n",$row[$j]);
+                                        $sql .= '"'.$row[$j].'"' ;
+                                    } else {
+                                        $sql.= 'NULL';
+                                    }
+    
+                                    if ($j < ($numFields-1)) {
+                                        $sql .= ',';
+                                    }
+                                }
+    
+                                if ($rowCount == $realBatchSize) {
+                                    $rowCount = 0;
+                                    $sql.= ");\n"; //close the insert statement
                                 } else {
-                                    $sql.= 'NULL';
+                                    $sql.= "),\n"; //close the row
                                 }
-
-                                if ($j < ($numFields-1)) {
-                                    $sql .= ',';
-                                }
+    
+                                $rowCount++;
                             }
-
-                            $sql.= ");\n";
                         }
+    
+                        $this->saveFile($sql);
+                        $sql = '';
                     }
-
-                    $this->saveFile($sql);
-                    $sql = '';
                 }
 
                 $sql.="\n\n\n";

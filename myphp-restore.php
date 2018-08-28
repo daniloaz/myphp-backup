@@ -14,7 +14,7 @@ define("DB_PASSWORD", 'your_password');
 define("DB_NAME", 'your_db_name');
 define("DB_HOST", 'localhost');
 define("BACKUP_DIR", 'myphp-backup-files'); // Comment this line to use same script's directory ('.')
-define("BACKUP_FILE", 'myphp-backup-your_db_name-20180802_135227.sql.gz'); // Script will autodetect if backup file is gzipped based on .gz extension
+define("BACKUP_FILE", 'myphp-backup-your_db_name-20180828_145103.sql.gz'); // Script will autodetect if backup file is gzipped based on .gz extension
 define("CHARSET", 'utf8');
 
 /**
