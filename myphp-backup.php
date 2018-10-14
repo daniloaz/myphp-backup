@@ -179,6 +179,12 @@ class Backup_Database {
                                     if (isset($row[$j])) {
                                         $row[$j] = addslashes($row[$j]);
                                         $row[$j] = str_replace("\n","\\n",$row[$j]);
+                                        $row[$j] = str_replace("\r","\\r",$row[$j]);
+                                        $row[$j] = str_replace("\f","\\f",$row[$j]);
+                                        $row[$j] = str_replace("\t","\\t",$row[$j]);
+                                        $row[$j] = str_replace("\v","\\v",$row[$j]);
+                                        $row[$j] = str_replace("\a","\\a",$row[$j]);
+                                        $row[$j] = str_replace("\b","\\b",$row[$j]);
                                         $sql .= '"'.$row[$j].'"' ;
                                     } else {
                                         $sql.= 'NULL';
