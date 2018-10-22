@@ -18,6 +18,7 @@ define("TABLES", '*'); // Full backup
 //define("TABLES", 'table1, table2, table3'); // Partial backup
 define("CHARSET", 'utf8');
 define("GZIP_BACKUP_FILE", true); // Set to false if you want plain SQL backup files (not gzipped)
+define("DISABLE_FOREIGN_KEY_CHECKS", true); // Set to true if you are having foreign key constraint fails
 define("BATCH_SIZE", 1000); // Batch size when selecting rows from database in order to not exhaust system memory
                             // Also number of rows per INSERT statement in backup file
 
@@ -76,6 +77,11 @@ class Backup_Database {
     var $output;
 
     /**
+     * Disable foreign key checks
+     */
+    var $disableForeignKeyChecks;
+
+    /**
      * Batch size, number of rows to process per iteration
      */
     var $batchSize;
@@ -84,17 +90,18 @@ class Backup_Database {
      * Constructor initializes database
      */
     public function __construct($host, $username, $passwd, $dbName, $charset = 'utf8') {
-        $this->host            = $host;
-        $this->username        = $username;
-        $this->passwd          = $passwd;
-        $this->dbName          = $dbName;
-        $this->charset         = $charset;
-        $this->conn            = $this->initializeDatabase();
-        $this->backupDir       = BACKUP_DIR ? BACKUP_DIR : '.';
-        $this->backupFile      = 'myphp-backup-'.$this->dbName.'-'.date("Ymd_His", time()).'.sql';
-        $this->gzipBackupFile  = defined('GZIP_BACKUP_FILE') ? GZIP_BACKUP_FILE : true;
-        $this->batchSize       = defined('BATCH_SIZE') ? BATCH_SIZE : 1000; // default 1000 rows
-        $this->output          = '';
+        $this->host                    = $host;
+        $this->username                = $username;
+        $this->passwd                  = $passwd;
+        $this->dbName                  = $dbName;
+        $this->charset                 = $charset;
+        $this->conn                    = $this->initializeDatabase();
+        $this->backupDir               = BACKUP_DIR ? BACKUP_DIR : '.';
+        $this->backupFile              = 'myphp-backup-'.$this->dbName.'-'.date("Ymd_His", time()).'.sql';
+        $this->gzipBackupFile          = defined('GZIP_BACKUP_FILE') ? GZIP_BACKUP_FILE : true;
+        $this->disableForeignKeyChecks = defined('DISABLE_FOREIGN_KEY_CHECKS') ? DISABLE_FOREIGN_KEY_CHECKS : true;
+        $this->batchSize               = defined('BATCH_SIZE') ? BATCH_SIZE : 1000; // default 1000 rows
+        $this->output                  = '';
     }
 
     protected function initializeDatabase() {
@@ -123,8 +130,8 @@ class Backup_Database {
     public function backupTables($tables = '*') {
         try {
             /**
-            * Tables to export
-            */
+             * Tables to export
+             */
             if($tables == '*') {
                 $tables = array();
                 $result = mysqli_query($this->conn, 'SHOW TABLES');
@@ -139,8 +146,15 @@ class Backup_Database {
             $sql .= 'USE `'.$this->dbName."`;\n\n";
 
             /**
-            * Iterate tables
-            */
+             * Disable foreign key checks 
+             */
+            if ($this->disableForeignKeyChecks === true) {
+                $sql .= "SET foreign_key_checks = 0;\n\n";
+            }
+
+            /**
+             * Iterate tables
+             */
             foreach($tables as $table) {
                 $this->obfPrint("Backing up `".$table."` table...".str_repeat('.', 50-strlen($table)), 0, 0);
 
@@ -232,10 +246,19 @@ class Backup_Database {
                     $sql = '';
                 }*/
  
-                $sql.="\n\n\n";
+                $sql.="\n\n";
 
                 $this->obfPrint('OK');
             }
+
+            /**
+             * Re-enable foreign key checks 
+             */
+            if ($this->disableForeignKeyChecks === true) {
+                $sql .= "SET foreign_key_checks = 1;\n";
+            }
+
+            $this->saveFile($sql);
 
             if ($this->gzipBackupFile) {
                 $this->gzipBackupFile();

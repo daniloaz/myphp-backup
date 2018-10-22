@@ -14,8 +14,9 @@ define("DB_PASSWORD", 'your_password');
 define("DB_NAME", 'your_db_name');
 define("DB_HOST", 'localhost');
 define("BACKUP_DIR", 'myphp-backup-files'); // Comment this line to use same script's directory ('.')
-define("BACKUP_FILE", 'myphp-backup-your_db_name-20180828_145103.sql.gz'); // Script will autodetect if backup file is gzipped based on .gz extension
+define("BACKUP_FILE", 'myphp-backup-your_db_name-20181022_164459.sql.gz'); // Script will autodetect if backup file is gzipped based on .gz extension
 define("CHARSET", 'utf8');
+define("DISABLE_FOREIGN_KEY_CHECKS", true); // Set to true if you are having foreign key constraint fails
 
 /**
  * The Restore_Database class
@@ -52,17 +53,35 @@ class Restore_Database {
     var $conn;
 
     /**
+     * Disable foreign key checks
+     */
+    var $disableForeignKeyChecks;
+
+    /**
      * Constructor initializes database
      */
     function __construct($host, $username, $passwd, $dbName, $charset = 'utf8') {
-        $this->host       = $host;
-        $this->username   = $username;
-        $this->passwd     = $passwd;
-        $this->dbName     = $dbName;
-        $this->charset    = $charset;
-        $this->conn       = $this->initializeDatabase();
-        $this->backupDir  = BACKUP_DIR ? BACKUP_DIR : '.';
-        $this->backupFile = BACKUP_FILE ? BACKUP_FILE : null;
+        $this->host                    = $host;
+        $this->username                = $username;
+        $this->passwd                  = $passwd;
+        $this->dbName                  = $dbName;
+        $this->charset                 = $charset;
+        $this->disableForeignKeyChecks = defined('DISABLE_FOREIGN_KEY_CHECKS') ? DISABLE_FOREIGN_KEY_CHECKS : true;
+        $this->conn                    = $this->initializeDatabase();
+        $this->backupDir               = defined('BACKUP_DIR') ? BACKUP_DIR : '.';
+        $this->backupFile              = defined('BACKUP_FILE') ? BACKUP_FILE : null;
+    }
+
+    /**
+     * Destructor re-enables foreign key checks
+     */
+    function __destructor() {
+        /**
+         * Re-enable foreign key checks 
+         */
+        if ($this->disableForeignKeyChecks === true) {
+            mysqli_query($this->conn, 'SET foreign_key_checks = 1');
+        }
     }
 
     protected function initializeDatabase() {
@@ -75,6 +94,14 @@ class Restore_Database {
             if (!mysqli_set_charset($conn, $this->charset)) {
                 mysqli_query($conn, 'SET NAMES '.$this->charset);
             }
+
+            /**
+             * Disable foreign key checks 
+             */
+            if ($this->disableForeignKeyChecks === true) {
+                mysqli_query($conn, 'SET foreign_key_checks = 0');
+            }
+
         } catch (Exception $e) {
             print_r($e->getMessage());
             die();
