@@ -29,6 +29,7 @@ Don't forget to set your database access credentials before performing any backu
 	//define("TABLES", 'table1, table2, table3'); // Partial backup
 	define("CHARSET", 'utf8');
 	define("GZIP_BACKUP_FILE", true); // Set to false if you want plain SQL backup files (not gzipped)
+        define("DISABLE_FOREIGN_KEY_CHECKS", true); // Set to true if you are having foreign key constraint fails
 
 By default backup files will be called *myphp-backup-{DB_NAME}-YYYYmmdd-HHMMSS.sql.gz* and stored in *myphp-backup-files* subdirectory. Example output backup file:
 
@@ -50,6 +51,7 @@ You can change the backup filename and subdirectory editing these lines. Don't f
 	define("BACKUP_DIR", 'myphp-backup-files'); // Comment this line to use same script's directory ('.')
 	define("BACKUP_FILE", 'your-backup-file.sql.gz'); // Script will autodetect if backup file is gzipped or not based on .gz extension
 	define("CHARSET", 'utf8');
+        define("DISABLE_FOREIGN_KEY_CHECKS", true); // Set to true if you are having foreign key constraint fails
 
 -----
 Project at GitHub: https://github.com/daniloaz/myphp-backup
