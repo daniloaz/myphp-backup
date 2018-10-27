@@ -382,7 +382,9 @@ class Backup_Database {
 
 
         if (php_sapi_name() != "cli") {
-            ob_flush();
+            if( ob_get_level() > 0 ) {
+                ob_flush();
+            }
         }
 
         $this->output .= " ";
