@@ -199,7 +199,11 @@ class Backup_Database {
                                         $row[$j] = str_replace("\v","\\v",$row[$j]);
                                         $row[$j] = str_replace("\a","\\a",$row[$j]);
                                         $row[$j] = str_replace("\b","\\b",$row[$j]);
-                                        $sql .= '"'.$row[$j].'"' ;
+                                        if ($row[$j] == 'true' or $row[$j] == 'false' or preg_match('/^-?[0-9]+$/', $row[$j]) or $row[$j] == 'NULL' or $row[$j] == 'null') {
+                                            $sql .= $row[$j];
+                                        } else {
+                                            $sql .= '"'.$row[$j].'"' ;
+                                        }
                                     } else {
                                         $sql.= 'NULL';
                                     }
