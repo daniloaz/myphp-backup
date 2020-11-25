@@ -16,6 +16,10 @@ define("DB_HOST", 'localhost');
 define("BACKUP_DIR", 'myphp-backup-files'); // Comment this line to use same script's directory ('.')
 define("TABLES", '*'); // Full backup
 //define("TABLES", 'table1, table2, table3'); // Partial backup
+define('IGNORE_TABLES',array(
+    'tbl_token_auth',
+    'token_auth'
+)); // Tables to ignore
 define("CHARSET", 'utf8');
 define("GZIP_BACKUP_FILE", true); // Set to false if you want plain SQL backup files (not gzipped)
 define("DISABLE_FOREIGN_KEY_CHECKS", true); // Set to true if you are having foreign key constraint fails
@@ -142,7 +146,7 @@ class Backup_Database {
                 $tables = is_array($tables) ? $tables : explode(',', str_replace(' ', '', $tables));
             }
 
-            $sql = 'CREATE DATABASE IF NOT EXISTS `'.$this->dbName."`;\n\n";
+            $sql = 'CREATE DATABASE IF NOT EXISTS `'.$this->dbName.'`'.";\n\n";
             $sql .= 'USE `'.$this->dbName."`;\n\n";
 
             /**
@@ -156,6 +160,8 @@ class Backup_Database {
              * Iterate tables
              */
             foreach($tables as $table) {
+                if( in_array($table, IGNORE_TABLES) )
+                    continue;
                 $this->obfPrint("Backing up `".$table."` table...".str_repeat('.', 50-strlen($table)), 0, 0);
 
                 /**
@@ -403,7 +409,49 @@ class Backup_Database {
     public function getOutput() {
         return $this->output;
     }
+    /**
+     * Returns name of backup file
+     *
+     */
+    public function getBackupFile() {
+        if ($this->gzipBackupFile) {
+            return $this->backupDir.'/'.$this->backupFile.'.gz';
+        } else
+        return $this->backupDir.'/'.$this->backupFile;
+    }
+
+    /**
+     * Returns backup directory path
+     *
+     */
+    public function getBackupDir() {
+        return $this->backupDir;
+    }
+
+    /**
+     * Returns array of changed tables since duration
+     *
+     */
+    public function getChangedTables($since = '1 day') {
+        $query = "SELECT TABLE_NAME,update_time FROM information_schema.tables WHERE table_schema='" . $this->dbName . "'";
+
+        $result = mysqli_query($this->conn, $query);
+        while($row=mysqli_fetch_assoc($result)) {
+            $resultset[] = $row;
+            }		
+        if(empty($resultset))
+            return false;
+        $tables = [];
+        for ($i=0; $i < count($resultset); $i++) {
+            if( in_array($resultset[$i]['TABLE_NAME'], IGNORE_TABLES) ) // ignore this table
+                continue;
+            if(strtotime('-' . $since) < strtotime($resultset[$i]['update_time']))
+                $tables[] = $resultset[$i]['TABLE_NAME'];
+        }
+        return ($tables) ? $tables : false;
+    }
 }
+
 
 /**
  * Instantiate Backup_Database and perform backup
@@ -419,7 +467,22 @@ if (php_sapi_name() != "cli") {
 }
 
 $backupDatabase = new Backup_Database(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, CHARSET);
-$result = $backupDatabase->backupTables(TABLES, BACKUP_DIR) ? 'OK' : 'KO';
+
+// Option-1: Backup tables already defined above
+$result = $backupDatabase->backupTables(TABLES) ? 'OK' : 'KO';
+
+// Option-2: Backup changed tables only - uncomment block below
+/*
+$since = '1 day';
+$changed = $backupDatabase->getChangedTables($since);
+if(!$changed){
+  $backupDatabase->obfPrint('No tables modified since last ' . $since . '! Quitting..', 1);
+  die();
+}
+$result = $backupDatabase->backupTables($changed) ? 'OK' : 'KO';
+*/
+
+
 $backupDatabase->obfPrint('Backup result: ' . $result, 1);
 
 // Use $output variable for further processing, for example to send it by email
