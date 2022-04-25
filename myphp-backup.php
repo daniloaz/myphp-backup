@@ -100,7 +100,7 @@ class Backup_Database {
         $this->dbName                  = $dbName;
         $this->charset                 = $charset;
         $this->conn                    = $this->initializeDatabase();
-        $this->backupDir               = BACKUP_DIR ? BACKUP_DIR : '.';
+        $this->backupDir               = defined('BACKUP_DIR') ? BACKUP_DIR : '.';
         $this->backupFile              = 'myphp-backup-'.$this->dbName.'-'.date("Ymd_His", time()).'.sql';
         $this->gzipBackupFile          = defined('GZIP_BACKUP_FILE') ? GZIP_BACKUP_FILE : true;
         $this->disableForeignKeyChecks = defined('DISABLE_FOREIGN_KEY_CHECKS') ? DISABLE_FOREIGN_KEY_CHECKS : true;
